@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Maxine Portfolio — Data-first</title>
+  <style>
+    :root{
+      --bg:#0b0b0b; --panel:#141414; --panel-2:#101010; --line:#2a2a2a;
+      --text:#f4f4f4; --muted:#bbbbbb; --accent:#e6d3a3; --ok:#8bd3a8; --warn:#f5c47b;
+      --topbar-h:72px;
+      --top-offset:calc(var(--topbar-h) + 3px);
+    }
+    *{ box-sizing:border-box; }
+    html,body{ margin:0; width:100%; height:100%; background:var(--bg); color:var(--text); font-family:Georgia, "Times New Roman", serif; overflow:hidden; }
+
+    .topbar{
+      border-bottom:1px solid var(--line); background:rgba(11,11,11,.92); backdrop-filter:blur(8px);
+      display:flex; align-items:center; justify-content:space-between; padding:0 16px; position:fixed; top:0; left:0; right:0; z-index:30;
+      min-height:72px;
+    }
+    .brand{ display:flex; align-items:center; gap:10px; }
+    .brand h1{ margin:0; font-size:26px; font-weight:700; }
+    .status-chip{ border:1px solid #3a3a3a; border-radius:999px; padding:4px 10px; font-size:12px; background:#111; color:#ddd; white-space:nowrap; }
+
+    .top-actions{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
+    .btn{
+      border:1px solid var(--line); background:#111; color:var(--text); padding:7px 11px; border-radius:10px;
+      font:inherit; font-size:13px; cursor:pointer; transition:.2s;
+    }
+    .btn:hover{ border-color:var(--accent); color:var(--accent); }
+    .btn.primary{ border-color:#5a4b2c; background:#19150d; color:#f3e7ca; }
+    .btn-nav{ width:36px; height:36px; border-radius:999px; display:flex; align-items:center; justify-content:center; padding:0; font-size:18px; }
+
+    .progress-wrap{ position:fixed; top:var(--topbar-h); left:0; right:0; height:3px; background:#181818; z-index:29; }
+    .progress{ width:0; height:100%; background:linear-gradient(90deg,var(--accent),#f5e6bf); transition:width .12s linear; }
+
+    .track{
+      position:fixed; top:var(--top-offset); left:0; right:0; bottom:0; display:flex; overflow-x:auto; overflow-y:hidden;
+      scroll-snap-type:x mandatory; scroll-behavior:smooth; -webkit-overflow-scrolling:touch; scrollbar-width:none; cursor:grab;
+      outline:none;
+    }
+    .track:focus{ box-shadow: inset 0 0 0 1px rgba(230,211,163,.25); }
+    .track::-webkit-scrollbar{ display:none; }
+
+    .panel{ min-width:100vw; height:calc(100vh - var(--top-offset)); scroll-snap-align:start; padding:22px; display:flex; }
+    .panel-inner{
+      width:100%; border:1px solid var(--line); border-radius:16px; background:linear-gradient(160deg,#151515,#101010);
+      overflow:hidden; display:grid; grid-template-rows:auto 1fr;
+    }
+    .panel-head{
+      border-bottom:1px solid var(--line); padding:14px 16px; display:flex; justify-content:space-between; align-items:center; gap:10px;
+      background:rgba(10,10,10,.65);
+    }
+    .panel-head h2{ margin:0; font-size:22px; font-weight:500; }
+    .panel-tag{ font-size:12px; color:var(--muted); border:1px solid #363636; border-radius:999px; padding:4px 10px; background:#121212; white-space:nowrap; }
+
+    .panel-body{ padding:16px; overflow:auto; }
+    .hero-grid{ display:grid; grid-template-columns:1.2fr 1fr; gap:14px; height:100%; }
+    .card{ border:1px solid #313131; border-radius:12px; background:var(--panel-2); padding:14px; }
+    h3{ margin:0 0 10px; font-size:18px; font-weight:500; }
+    p{ margin:0 0 10px; color:#dedede; font-size:15px; line-height:1.5; }
+    .muted{ color:var(--muted); }
+
+    .kpi-row{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; margin-top:8px; }
+    .kpi{ border:1px solid #353535; border-radius:10px; padding:10px; background:#111; }
+    .kpi strong{ display:block; font-size:20px; color:var(--accent); margin-bottom:2px; }
+    .kpi span{ font-size:12px; color:#cfcfcf; }
+
+    .list{ margin:0; padding-left:18px; color:#e2e2e2; font-size:14px; line-height:1.55; }
+    .list li{ margin-bottom:6px; }
+
+    .cols-2{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .split{ display:grid; grid-template-columns:1fr 1fr; gap:12px; height:100%; }
+
+    .item{ border:1px solid #323232; border-radius:10px; padding:12px; background:#0f0f0f; }
+    .item h4{ margin:0 0 6px; font-size:16px; font-weight:500; }
+    .item .meta{ color:#b8b8b8; font-size:12px; margin-bottom:8px; }
+
+    .chips{ display:flex; flex-wrap:wrap; gap:8px; }
+    .chip{ border:1px solid #3a3a3a; border-radius:999px; padding:5px 10px; font-size:13px; background:#121212; color:#ddd; }
+
+    .ach-grid{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin-top:8px; }
+    .ach{ border:1px solid #343434; border-radius:10px; padding:12px; background:#111; }
+    .ach .num{ font-size:24px; color:var(--ok); font-weight:700; margin-bottom:4px; }
+    .ach .label{ font-size:12px; color:#cfcfcf; }
+
+    .module{
+      border:1px solid #323232; border-radius:12px; background:#0f0f0f; display:grid; grid-template-rows:auto auto 1fr auto; min-height:100%;
+    }
+    .module-head{ padding:10px; border-bottom:1px solid #2d2d2d; display:flex; flex-wrap:wrap; gap:8px; background:#101010; }
+    .toggle{
+      border:1px solid #373737; background:#121212; color:#e8e8e8; border-radius:999px; padding:6px 10px; font-size:12px; cursor:pointer; transition:.2s; font-family:inherit;
+    }
+    .toggle:hover{ border-color:var(--accent); color:var(--accent); }
+    .toggle.active{ border-color:var(--accent); color:var(--accent); background:#16130b; }
+
+    .module-title{ padding:10px 12px 0; }
+    .module-title h3{ margin:0 0 5px; font-size:20px; }
+    .module-title p{ margin:0 0 8px; color:var(--muted); font-size:14px; }
+
+    .stage-wrap{ padding:0 12px 12px; }
+    .stage{
+      position:relative; border:1px solid #343434; border-radius:10px; overflow:hidden; background:#121212;
+      aspect-ratio:16/9; display:flex; align-items:center; justify-content:center;
+    }
+    .stage-image{
+      width:100%; height:100%; display:flex; align-items:center; justify-content:center; text-align:center;
+      padding:20px; font-size:16px; color:#f0f0f0; opacity:0; transition:opacity .28s ease;
+      user-select:none;
+    }
+    .stage-image.show{ opacity:1; }
+
+    .overlay{ position:absolute; inset:0; pointer-events:none; display:flex; justify-content:space-between; align-items:center; padding:8px; }
+    .arrow{
+      pointer-events:auto; border:1px solid #3a3a3a; background:rgba(8,8,8,.65); color:#f3f3f3;
+      width:34px; height:34px; border-radius:999px; cursor:pointer; font-size:18px; display:flex; align-items:center; justify-content:center; transition:.2s;
+    }
+    .arrow:hover{ border-color:var(--accent); color:var(--accent); }
+
+    .caption{ border-top:1px solid #2c2c2c; padding:9px 10px; background:#101010; }
+    .caption .t{ margin:0 0 4px; font-size:14px; }
+    .caption .n{ margin:0; font-size:12px; color:var(--muted); }
+
+    .thumbs{ padding:10px 12px 12px; display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:8px; }
+    .thumb{ border:1px solid #343434; border-radius:9px; overflow:hidden; cursor:pointer; background:#111; transition:.2s; }
+    .thumb:hover{ transform:translateY(-1px); }
+    .thumb.active{ border-color:var(--accent); box-shadow:inset 0 0 0 1px rgba(230,211,163,.35); }
+    .thumb div{
+      aspect-ratio:4/3; padding:7px; display:flex; align-items:center; justify-content:center; text-align:center; font-size:11px; color:#efefef;
+      user-select:none;
+    }
+
+    .artists{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+    .artist{ border:1px solid #333; border-radius:10px; padding:12px; background:#111; text-align:center; font-size:14px; }
+
+    .recruiter-grid{ display:grid; grid-template-columns:1.2fr 1fr; gap:12px; height:100%; }
+    .quick-jump{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-top:8px; }
+
+    .dots{
+      position:fixed; left:50%; transform:translateX(-50%); bottom:10px; z-index:18; display:flex; gap:8px;
+      padding:6px 10px; border:1px solid #2f2f2f; border-radius:999px; background:rgba(12,12,12,.75); backdrop-filter:blur(6px);
+    }
+    .dot{ width:8px; height:8px; border-radius:999px; border:1px solid #666; background:#262626; cursor:pointer; transition:.2s; }
+    .dot.active{ background:var(--accent); border-color:var(--accent); transform:scale(1.1); }
+
+    .hint{
+      position:fixed; right:12px; bottom:10px; font-size:12px; color:#b9b9b9; border:1px solid #313131;
+      border-radius:999px; padding:5px 10px; background:rgba(12,12,12,.72); z-index:18;
+    }
+
+    .drawer{
+      position:fixed; top:calc(var(--topbar-h) + 4px); right:-380px; width:360px; bottom:12px; border:1px solid #333; border-right:none;
+      background:rgba(14,14,14,.98); backdrop-filter:blur(8px); border-radius:12px 0 0 12px; z-index:31; transition:right .28s ease;
+      padding:12px; overflow:auto;
+    }
+    .drawer.open{ right:0; }
+    .drawer .mini{ font-size:12px; color:var(--muted); margin-bottom:8px; }
+
+    .toast{
+      position:fixed; right:12px; top:calc(var(--topbar-h) + 16px); z-index:40; border:1px solid #47361f; background:#1d160c; color:#f7dfb0;
+      border-radius:10px; padding:10px 12px; font-size:13px; opacity:0; transform:translateY(-8px); pointer-events:none; transition:.2s; max-width:320px;
+    }
+    .toast.show{ opacity:1; transform:translateY(0); }
+
+    @media (max-width:1100px){
+      .hero-grid,.split,.cols-2,.recruiter-grid{ grid-template-columns:1fr; }
+      .kpi-row{ grid-template-columns:repeat(2,minmax(0,1fr)); }
+      .ach-grid{ grid-template-columns:repeat(2,minmax(0,1fr)); }
+      .thumbs{ grid-template-columns:repeat(3,minmax(0,1fr)); }
+      .artists{ grid-template-columns:1fr 1fr; }
+      .drawer{ width:320px; right:-340px; }
+    }
+    @media (max-width:760px){
+      .topbar{ align-items:flex-start; gap:8px; flex-direction:column; padding:10px 12px; }
+      .panel{ padding:12px; }
+      .hint{ display:none; }
+      .thumbs{ grid-template-columns:repeat(2,minmax(0,1fr)); }
+      .artists{ grid-template-columns:1fr; }
+      .ach-grid{ grid-template-columns:1fr; }
+      .top-actions .btn:not(.btn-nav):not(.primary){ display:none; }
+      .drawer{ display:none; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar" id="topbar">
+    <div class="brand">
+      <h1>Maxine</h1>
+      <span class="status-chip">Summer 2027 · On-site · Mon–Fri</span>
+    </div>
+    <div class="top-actions">
+      <button class="btn primary" id="downloadResume">Download Resume</button>
+      <button class="btn" id="openRecruiter">30s View</button>
+
+      <button class="btn" data-go="0">Intro</button>
+      <button class="btn" data-go="1">About</button>
+      <button class="btn" data-go="2">Impact</button>
+      <button class="btn" data-go="3">Projects</button>
+      <button class="btn" data-go="4">Skills</button>
+      <button class="btn" data-go="5">Photo</button>
+      <button class="btn" data-go="6">Case</button>
+      <button class="btn" data-go="7">Recruiter</button>
+
+      <button class="btn btn-nav" id="prevPanel" aria-label="Previous">‹</button>
+      <button class="btn btn-nav" id="nextPanel" aria-label="Next">›</button>
+    </div>
+  </header>
+
+  <div class="progress-wrap"><div class="progress" id="progress"></div></div>
+  <div class="toast" id="toast"></div>
+
+  <aside class="drawer" id="drawer">
+    <h3>Recruiter 30-second View</h3>
+    <p class="mini">Numbers only</p>
+    <div class="item">
+      <h4>Profile</h4>
+      <p>CUHK IBBA Marketing · Year 3 · GPA 3.57/4.0</p>
+      <p>Availability: May–Aug 2027 (On-site)</p>
+    </div>
+    <div class="item" style="margin-top:8px;">
+      <h4>Execution</h4>
+      <ul class="list">
+        <li>25 PO projects</li>
+        <li>200+ banners</li>
+        <li>25 long pages</li>
+        <li>10 video stickers</li>
+      </ul>
+    </div>
+    <div class="item" style="margin-top:8px;">
+      <h4>Leadership</h4>
+      <ul class="list">
+        <li>12-member team</li>
+        <li>15 events</li>
+        <li>1,000+ participants</li>
+      </ul>
+    </div>
+    <div class="quick-jump">
+      <button class="btn" data-go="2">Go Impact</button>
+      <button class="btn" data-go="7">Go Recruiter</button>
+      <button class="btn" id="closeDrawer">Close</button>
+      <button class="btn primary" id="downloadResumeDrawer">Download</button>
+    </div>
+  </aside>
+
+  <main class="track" id="track" tabindex="0">
+    <!-- 1 Intro -->
+    <section class="panel">
+      <div class="panel-inner">
+        <div class="panel-head">
+          <h2>Maxine Yan · Marketing Candidate</h2>
+          <span class="panel-tag">Data-first Portfolio</span>
+        </div>
+        <div class="panel-body">
+          <div class="hero-grid">
+            <div class="card">
+              <h3>Target Role</h3>
+              <ul class="list">
+                <li>Marketing / Brand / Strategy / Account</li>
+                <li>Internship window: <strong>2027.05–2027.08</strong></li>
+                <li>Work mode: <strong>On-site, Mon–Fri</strong></li>
+              </ul>
+            </div>
+            <div class="card">
+              <h3>Top Numbers</h3>
+              <div class="kpi-row">
+                <div class="kpi"><strong>3.57</strong><span>Major GPA</span></div>
+                <div class="kpi"><strong>25</strong><span>PO projects</span></div>
+                <div class="kpi"><strong>200+</strong><span>Banners</span></div>
+                <div class="kpi"><strong>1,000+</strong><span>Event reach</span></div>
+              </div>
+              <p class="muted" style="margin-top:10px;">Scroll / drag / ← →</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2 About -->
+    <section class="panel">
+      <div class="panel-inner">
+        <div class="panel-head">
+          <h2>Education</h2>
+          <span class="panel-tag">CUHK</span>
+        </div>
+        <div class="panel-body">
+          <div class="cols-2">
+            <div class="card">
+              <h3>Academic</h3>
+              <ul class="list">
+                <li>CUHK Integrated BBA (Marketing), Year 3</li>
+                <li>Period: 2024.09–2028.07</li>
+                <li>Major GPA: <strong>3.57 / 4.0</strong></li>
+              </ul>
+            </div>
+            <div class="card">
+              <h3>Core Courses</h3>
+              <ul class="list">
+                <li>Marketing Management</li>
+                <li>Statistical Analysis</li>
+                <li>Operations Management</li>
+                <li>Financial Accounting / Management Accounting</li>
+                <li>Microeconomics / Business Law / Financial Management</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3 Impact -->
+    <section class="panel">
+      <div class="panel-inner">
+        <div class="panel-head">
+          <h2>Impact Summary</h2>
+          <span class="panel-tag">VML Internship</span>
+        </div>
+        <div class="panel-body">
+          <div class="item">
+            <h4>Account Executive Intern · VML (Beauty)</h4>
+            <div class="meta">Shanghai · 2026.05–2026.08</div>
+            <ul class="list">
+              <li>SK-II APAC e-commerce support: Japan + 8 markets</li>
+              <li>Cross-team coordination: <strong>25 PO projects</strong></li>
+              <li>Production output: <strong>200+ banners</strong>, <strong>25 long pages</strong>, <strong>10 video stickers</strong></li>
+            </ul>
+          </div>
+          <div class="item" style="margin-top:10px;">
+            <h4>Selected Achievements</h4>
+            <div class="ach-grid">
+              <div class="ach"><div class="num">25</div><div class="label">PO projects</div></div>
+              <div class="ach"><div class="num">200+</div><div class="label">Banners</div></div>
+              <div class="ach"><div class="num">25</div><div class="label">Long pages</div></div>
+              <div class="ach"><div class="num">10</div><div class="label">Video stickers</div></div>
+              <div class="ach"><div class="num">15</div><div class="label">Campus events</div></div>
+              <div class="ach"><div class="num">1,000+</div><div class="label">Participants</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4 Projects -->
+    <section class="panel">
+      <div class="panel-inner">
+        <div class="panel-head">
+          <h2>Projects & Leadership</h2>
+          <span class="panel-tag">Case + Campus</span>
+        </div>
+        <div class="panel-body">
+          <div class="split">
+            <article class="item">
+              <h4>L’Oréal Luxury Perfume Case · Captain</h4>
+              <div class="meta">Online, HK · 2026.02–2026.03</div>
+              <ul class="list">
+                <li>Team size: 3</li>
+                <li>Duration: 4 weeks</li>
+                <li>Scope: China luxury fragrance</li>
+              </ul>
+            </article>
+            <article class="item">
+              <h4>CUHK Mainland UG Association · Vice President</h4>
+              <div class="meta">HK · 2025.09–2026.04</div>
+              <ul class="list">
+                <li><strong>12-member</strong> team co-led</li>
+                <li><strong>500+</strong> active members served</li>
+                <li><strong>15</strong> events, <strong>1,000+</strong> total participants</li>
+              </ul>
+            </article>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5 Skills -->
+    <section class="panel">
+      <div class="panel-inner">
+        <div class="panel-head">
+          <h2>Skills / Contact</h2>
+          <span class="panel-tag">Ready for 2027 Summer</span>
+        </div>
+        <div class="panel-body">
+          <div class="cols-2">
+            <div class="card">
+              <h3>Tools</h3>
+              <div class="chips">
+                <span class="chip">Figma</span>
+                <span class="chip">PowerPoint</span>
+                <span class="chip">Microsoft Office</span>
+                <span class="chip">CapCut</span>
+                <span class="chip">Canva</span>
+              </div>
+              <h3 style="margin-top:14px;">Strengths</h3>
+              <div class="chips">
+                <span class="chip">Project Follow-up</span>
+                <span class="chip">Timeline Management</span>
+                <span class="chip">Cross-functional Comms</span>
+                <span class="chip">Presentation Design</span>
+              </div>
+            </div>
+            <div class="card">
+              <h3>Contact</h3>
+              <ul class="list">
+                <li>Email: 1155233291@link.cuhk.edu.hk</li>
+                <li>Phone: 5633-7358</li>
+                <li>Location: Hong Kong</li>
+                <li>Languages: English / Mandarin / Cantonese</li>
+              </ul>
+              <button class="btn primary" id="downloadResume2" style="margin-top:8px;">Download Resume</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6 Photography -->
+    <section class="panel">
+      <div class="panel-inner">
+        <div class="panel-head">
+          <h2>Photography</h2>
+          <span class="panel-tag">Large + Thumbnails</span>
+        </div>
+        <div class="panel-body">
+          <div class="card" style="height:100%;">
+            <p class="muted" style="margin-bottom:10px;">Minimal caption, visual-first.</p>
+            <div id="photoModule"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7 Case -->
+    <section class="panel">
+      <div class="panel-inner">
+        <div class="panel-head">
+          <h2>Case Showcase</h2>
+          <span class="panel-tag">Same Interaction as Photo</span>
+        </div>
+        <div class="panel-body">
+          <div class="cols-2" style="height:100%;">
+            <div class="card" style="height:100%;">
+              <div id="caseModule"></div>
+            </div>
+            <div class="card">
+              <h3>Cultural References</h3>
+              <div class="artists">
+                <div class="artist">Ariana Grande</div>
+                <div class="artist">Charli XCX</div>
+                <div class="artist">Lady Gaga</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 8 Recruiter Page -->
+    <section class="panel">
+      <div class="panel-inner">
+        <div class="panel-head">
+          <h2>Recruiter 30-second Page</h2>
+          <span class="panel-tag">Numbers Only</span>
+        </div>
+        <div class="panel-body">
+          <div class="recruiter-grid">
+            <div class="card">
+              <h3>Snapshot</h3>
+              <ul class="list">
+                <li>CUHK IBBA Marketing · GPA 3.57/4.0</li>
+                <li>Internship availability: 2027.05–2027.08</li>
+                <li>Role interest: Marketing / Brand / Strategy / Account</li>
+              </ul>
+              <h3 style="margin-top:12px;">Execution</h3>
+              <ul class="list">
+                <li>25 PO projects coordinated</li>
+                <li>200+ banners / 25 long pages / 10 video stickers</li>
+                <li>12-member team · 15 events · 1,000+ reach</li>
+              </ul>
+            </div>
+            <div class="card">
+              <h3>Quick Contact</h3>
+              <p>Email: 1155233291@link.cuhk.edu.hk</p>
+              <p>Phone: 5633-7358</p>
+              <p>Hong Kong</p>
+              <p style="color:var(--warn);">Set RESUME_URL in script to enable file download.</p>
+              <div class="quick-jump">
+                <button class="btn" data-go="2">Impact</button>
+                <button class="btn" data-go="3">Projects</button>
+                <button class="btn" data-go="4">Skills</button>
+                <button class="btn primary" id="downloadResume3">Download Resume</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="dots" id="dots"></div>
+  <div class="hint">Scroll sideways · Drag · ← → · R</div>
+
+  <script>
+    /* 推荐用绝对链接（Wix 内更稳定） */
+    const RESUME_URL = "https://18759579861-rgb.github.io/maxine-portfolio/Maxine_Resume.pdf";
+
+    const topbar = document.getElementById('topbar');
+    const track = document.getElementById('track');
+    const panels = Array.from(document.querySelectorAll('.panel'));
+    const progressEl = document.getElementById('progress');
+    const dotsEl = document.getElementById('dots');
+    const btnPrev = document.getElementById('prevPanel');
+    const btnNext = document.getElementById('nextPanel');
+    const drawer = document.getElementById('drawer');
+    const toast = document.getElementById('toast');
+
+    let activeIndex = 0;
+    let isDown = false;
+    let startX = 0;
+    let startScrollLeft = 0;
+    let toastTimer = null;
+
+    function clamp(n,min,max){ return Math.max(min, Math.min(max,n)); }
+
+    function syncTopOffset(){
+      const h = Math.ceil(topbar.getBoundingClientRect().height);
+      document.documentElement.style.setProperty('--topbar-h', h + 'px');
+    }
+
+    function goToPanel(index){
+      const i = clamp(index,0,panels.length-1);
+      track.scrollTo({ left:panels[i].offsetLeft, behavior:'smooth' });
+    }
+
+    function calcActiveIndex(){
+      const center = track.scrollLeft + track.clientWidth / 2;
+      let best = 0, dist = Infinity;
+      panels.forEach((p,i)=>{
+        const c = p.offsetLeft + p.offsetWidth / 2;
+        const d = Math.abs(center - c);
+        if(d < dist){ dist = d; best = i; }
+      });
+      return best;
+    }
+
+    function updateUI(){
+      activeIndex = calcActiveIndex();
+      const maxScroll = track.scrollWidth - track.clientWidth;
+      const ratio = maxScroll > 0 ? track.scrollLeft / maxScroll : 0;
+      progressEl.style.width = (ratio * 100).toFixed(2) + '%';
+      Array.from(dotsEl.children).forEach((dot,i)=> dot.classList.toggle('active', i === activeIndex));
+    }
+
+    function showToast(msg){
+      toast.textContent = msg;
+      toast.classList.add('show');
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(()=> toast.classList.remove('show'), 2200);
+    }
+
+    function downloadResume(){
+      if(RESUME_URL && RESUME_URL.trim()){
+        const a = document.createElement('a');
+        a.href = RESUME_URL;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        a.download = '';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      }else{
+        showToast('RESUME_URL is empty. Please set your PDF link in script.');
+      }
+    }
+
+    function isVerticalScrollable(el){
+      let node = el;
+      while(node && node !== track){
+        if(node.classList && node.classList.contains('panel-body')){
+          return node;
+        }
+        node = node.parentElement;
+      }
+      return null;
+    }
+
+    function shouldKeepVerticalScroll(target, deltaY){
+      const scrollBox = isVerticalScrollable(target);
+      if(!scrollBox) return false;
+      const atTop = scrollBox.scrollTop <= 0;
+      const atBottom = scrollBox.scrollTop + scrollBox.clientHeight >= scrollBox.scrollHeight - 1;
+      if(deltaY < 0 && !atTop) return true;
+      if(deltaY > 0 && !atBottom) return true;
+      return false;
+    }
+
+    panels.forEach((_,i)=>{
+      const d = document.createElement('button');
+      d.className = 'dot' + (i===0?' active':'');
+      d.type = 'button';
+      d.setAttribute('aria-label', 'Go panel ' + (i+1));
+      d.addEventListener('click', ()=> goToPanel(i));
+      dotsEl.appendChild(d);
+    });
+
+    document.querySelectorAll('[data-go]').forEach(btn=>{
+      btn.addEventListener('click', ()=> goToPanel(Number(btn.getAttribute('data-go'))));
+    });
+
+    btnPrev.addEventListener('click', ()=> goToPanel(activeIndex - 1));
+    btnNext.addEventListener('click', ()=> goToPanel(activeIndex + 1));
+
+    track.addEventListener('wheel', (e)=>{
+      if (shouldKeepVerticalScroll(e.target, e.deltaY)) return;
+      if(Math.abs(e.deltaY) > Math.abs(e.deltaX)){
+        e.preventDefault();
+        track.scrollLeft += e.deltaY;
+      }
+    }, { passive:false });
+
+    track.addEventListener('pointerdown', (e)=>{
+      if (e.button !== 0) return;
+      isDown = true;
+      startX = e.clientX;
+      startScrollLeft = track.scrollLeft;
+      track.style.cursor = 'grabbing';
+      track.focus();
+    });
+
+    window.addEventListener('pointerup', ()=>{
+      isDown = false;
+      track.style.cursor = 'grab';
+    });
+
+    window.addEventListener('pointercancel', ()=>{
+      isDown = false;
+      track.style.cursor = 'grab';
+    });
+
+    track.addEventListener('pointermove', (e)=>{
+      if(!isDown) return;
+      const dx = e.clientX - startX;
+      track.scrollLeft = startScrollLeft - dx;
+    });
+
+    window.addEventListener('keydown', (e)=>{
+      if(e.key === 'ArrowRight') goToPanel(activeIndex + 1);
+      if(e.key === 'ArrowLeft') goToPanel(activeIndex - 1);
+      if(e.key.toLowerCase() === 'r') drawer.classList.toggle('open');
+    });
+
+    track.addEventListener('scroll', updateUI, { passive:true });
+    window.addEventListener('resize', ()=>{
+      syncTopOffset();
+      updateUI();
+    });
+
+    syncTopOffset();
+    updateUI();
+
+    document.getElementById('openRecruiter').addEventListener('click', ()=>{
+      drawer.classList.toggle('open');
+      goToPanel(7);
+    });
+    document.getElementById('closeDrawer').addEventListener('click', ()=> drawer.classList.remove('open'));
+
+    document.getElementById('downloadResume').addEventListener('click', downloadResume);
+    document.getElementById('downloadResume2').addEventListener('click', downloadResume);
+    document.getElementById('downloadResume3').addEventListener('click', downloadResume);
+    document.getElementById('downloadResumeDrawer').addEventListener('click', downloadResume);
+
+    function fadeSwap(el, cb){
+      el.classList.remove('show');
+      setTimeout(()=>{ cb(); el.classList.add('show'); }, 90);
+    }
+
+    function createGallery(config){
+      const mount = document.getElementById(config.mountId);
+      if(!mount) return;
+
+      const root = document.createElement('div');
+      root.className = 'module';
+
+      const head = document.createElement('div');
+      head.className = 'module-head';
+
+      const titleWrap = document.createElement('div');
+      titleWrap.className = 'module-title';
+      const t = document.createElement('h3');
+      const s = document.createElement('p');
+      titleWrap.appendChild(t); titleWrap.appendChild(s);
+
+      const stageWrap = document.createElement('div');
+      stageWrap.className = 'stage-wrap';
+      const stage = document.createElement('div');
+      stage.className = 'stage';
+      const image = document.createElement('div');
+      image.className = 'stage-image';
+
+      const overlay = document.createElement('div');
+      overlay.className = 'overlay';
+      const prev = document.createElement('button');
+      prev.className = 'arrow'; prev.type = 'button'; prev.textContent = '‹';
+      const next = document.createElement('button');
+      next.className = 'arrow'; next.type = 'button'; next.textContent = '›';
+      overlay.appendChild(prev); overlay.appendChild(next);
+
+      stage.appendChild(image); stage.appendChild(overlay);
+
+      const caption = document.createElement('div');
+      caption.className = 'caption';
+      const capT = document.createElement('p'); capT.className = 't';
+      const capN = document.createElement('p'); capN.className = 'n';
+      caption.appendChild(capT); caption.appendChild(capN);
+
+      const thumbs = document.createElement('div');
+      thumbs.className = 'thumbs';
+
+      stageWrap.appendChild(stage); stageWrap.appendChild(caption);
+      root.appendChild(head); root.appendChild(titleWrap); root.appendChild(stageWrap); root.appendChild(thumbs);
+      mount.appendChild(root);
+
+      const groupKeys = Object.keys(config.groups);
+      const state = { group: groupKeys[0], idx: 0 };
+      function items(){ return config.groups[state.group] || []; }
+
+      function renderGroupSwitch(){
+        head.innerHTML = '';
+        groupKeys.forEach(key=>{
+          const b = document.createElement('button');
+          b.className = 'toggle' + (key === state.group ? ' active' : '');
+          b.type = 'button';
+          b.textContent = key;
+          b.addEventListener('click', ()=>{
+            state.group = key; state.idx = 0; render();
+          });
+          head.appendChild(b);
+        });
+      }
+
+      function renderThumbs(list){
+        thumbs.innerHTML = '';
+        list.forEach((it,i)=>{
+          const th = document.createElement('button');
+          th.className = 'thumb' + (i === state.idx ? ' active' : '');
+          th.type = 'button';
+          th.innerHTML = `<div style="background:${it.bg};">${it.label}</div>`;
+          th.addEventListener('click', ()=>{ state.idx = i; render(); });
+          thumbs.appendChild(th);
+        });
+      }
+
+      function render(){
+        const list = items();
+        if(!list.length) return;
+        if(state.idx < 0) state.idx = list.length - 1;
+        if(state.idx >= list.length) state.idx = 0;
+        const cur = list[state.idx];
+
+        t.textContent = config.title + ' · ' + state.group;
+        s.textContent = config.subtitle;
+
+        fadeSwap(image, ()=>{
+          image.style.background = cur.bg;
+          image.textContent = cur.label;
+        });
+
+        capT.textContent = cur.label + ' (' + (state.idx + 1) + '/' + list.length + ')';
+        capN.textContent = cur.note || '';
+        renderGroupSwitch();
+        renderThumbs(list);
+      }
+
+      prev.addEventListener('click', ()=>{ state.idx--; render(); });
+      next.addEventListener('click', ()=>{ state.idx++; render(); });
+      render();
+    }
+
+    createGallery({
+      mountId:'photoModule',
+      title:'Photography',
+      subtitle:'thumbnail navigation',
+      groups:{
+        'Spain': [
+          { label:'Spain 01', note:'', bg:'linear-gradient(135deg,#7a5a3d,#2a1f18)' },
+          { label:'Spain 02', note:'', bg:'linear-gradient(135deg,#8e6b4f,#2b221d)' },
+          { label:'Spain 03', note:'', bg:'linear-gradient(135deg,#6d5345,#221b17)' },
+          { label:'Spain 04', note:'', bg:'linear-gradient(135deg,#9b7a56,#2d241d)' },
+          { label:'Spain 05', note:'', bg:'linear-gradient(135deg,#8a6949,#2b211a)' }
+        ],
+        'Sharp Island': [
+          { label:'Sea', note:'', bg:'linear-gradient(135deg,#3b5960,#18252a)' },
+          { label:'Rock', note:'', bg:'linear-gradient(135deg,#5c676f,#1f252b)' },
+          { label:'Hill', note:'', bg:'linear-gradient(135deg,#4f6a52,#1b241d)' },
+          { label:'Tide', note:'', bg:'linear-gradient(135deg,#4e5f68,#1a2329)' }
+        ],
+        'CUHK': [
+          { label:'Sky', note:'', bg:'linear-gradient(135deg,#5f748b,#1f2a36)' },
+          { label:'Window', note:'', bg:'linear-gradient(135deg,#6b625a,#25211d)' },
+          { label:'Moon', note:'', bg:'linear-gradient(135deg,#3e4350,#17191f)' }
+        ]
+      }
+    });
+
+    createGallery({
+      mountId:'caseModule',
+      title:'Case Competition',
+      subtitle:'same interaction model',
+      groups:{
+        'PPT展示': [
+          { label:'Slide 01', note:'', bg:'linear-gradient(135deg,#5b4d6b,#1f1a2a)' },
+          { label:'Slide 02', note:'', bg:'linear-gradient(135deg,#6a4f5d,#241a21)' },
+          { label:'Slide 03', note:'', bg:'linear-gradient(135deg,#4f5f78,#1b2330)' }
+        ],
+        '建模展示': [
+          { label:'Model A', note:'', bg:'linear-gradient(135deg,#55616a,#1d2328)' },
+          { label:'Model B', note:'', bg:'linear-gradient(135deg,#696056,#25211c)' },
+          { label:'Display', note:'', bg:'linear-gradient(135deg,#5f564b,#221d18)' }
+        ]
+      }
+    });
+  </script>
+</body>
+</html>v
